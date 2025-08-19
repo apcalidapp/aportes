@@ -12,6 +12,11 @@ unit APO001;
 //                        implementar un control que no permita acceder al m�dulo sino est� inscrito en el grupo asignado al m�dulo
 // APO_202102_HPC       : Cambio de versión:
 // PCC 08.08.2025
+// APO_202102_HPC       : Cambio de versi�n:
+//
+//
+// PCC Test 2 GH 08.08.2025
+// PCC T3
 
 
 interface

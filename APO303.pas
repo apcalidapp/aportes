@@ -64,21 +64,17 @@ type
     bbtnCancelar: TfcShapeBtn;
     Panel2: TPanel;
     Label3: TLabel;
-    Label4: TLabel;
     dbeCodigoModular: TwwDBEdit;
     dbeAsoNom: TwwDBEdit;
     dblcFormaDesem: TwwDBLookupCombo;
-    dblcAgencia: TwwDBLookupComboDlg;
     dbeMonedaCab: TwwDBEdit;
     dbeMonto: TwwDBEdit;
-    edtAgencia: TwwDBEdit;
     edtFormaDesem: TwwDBEdit;
     dbdtpFechaDev: TwwDBDateTimePicker;
     fcLabel1: TfcLabel;
     fcLabel2: TfcLabel;
     fcLabel3: TfcLabel;
     dblcBanco: TwwDBLookupCombo;
-    dblcCCBco: TwwDBLookupCombo;
     dbeBanco: TwwDBEdit;
     dbeCuentaAsociado: TwwDBEdit;
     edtMotDev: TwwDBEdit;
@@ -136,6 +132,18 @@ type
     Label12: TLabel;
     DBLkOfiDes: TwwDBLookupCombo;
     EdtOfiDes: TEdit;
+//Inicio APO_202501_HPC
+    EdtSitCta: TEdit;
+    pnlBanco: TPanel;
+    dblcCCBco: TwwDBLookupCombo;
+    Label4: TLabel;
+    dblcAgencia: TwwDBLookupComboDlg;
+    edtAgencia: TwwDBEdit;
+    pnltipdescci: TPanel;
+    lblctaahocci: TLabel;
+    pnlcci: TPanel;
+    Edtctacci: TMaskEdit;
+//Final APO_202501_HPC
 //Fin APO_202101_HPC  
     procedure Z2bbtnCancelClick(Sender: TObject);
     procedure dblcMonedaExit(Sender: TObject);
@@ -187,6 +195,10 @@ type
 //Inicio APO_202101_HPC  
 //Opción desembolso en efectivo en oficinas
     procedure DBLkOfiDesChange(Sender: TObject);
+//Inicio APO_202501_HPC
+    procedure EdtctacciExit(Sender: TObject);
+    procedure dblcFormaDesemChange(Sender: TObject);
+//Final APO_202501_HPC
 //Fin APO_202101_HPC  
 
 
@@ -369,7 +381,11 @@ var
   end ;
 
 begin
-
+//Inicio APO_202501_HPC
+  pnlBanco.Visible :=True;
+  pnltipdescci.Visible := False;
+  pnlCajaDerrama.Visible := False;
+//Final APO_202501_HPC
   if bbtnCancelar.Focused then
      Exit ;
 
@@ -431,9 +447,23 @@ begin
     dblcCCBco.Text:='';
     edtAgencia.Text:='';
     pnlCajaDerrama.Visible := True;
+//Inicio APO_202501_HPC
+    pnlBanco.Visible :=False
+//Final APO_202501_HPC
   end;
 //Fin APO_202101_HPC  
-
+//Inicio APO_202501_HPC
+   If dblcFormaDesem.Text='20' Then //Transferencia interbancara
+   Begin
+    dblcCCBco.Text:='';
+    edtAgencia.Text:='';
+    pnlCajaDerrama.Visible := False;
+    pnltipdescci.Visible   := True;
+    Edtctacci.Text := dm1.cdsAsociados.Fieldbyname('ASOCCI').AsString;
+    dblcBanco.SetFocus;
+    dblcBanco.DropDown;
+   End;
+//Final APO_202501_HPC
 end;
 
 procedure TFDevolucionAportes.dblcAgenciaExit(Sender: TObject);
@@ -568,7 +598,9 @@ begin
 
   //Si es =04 se inserta en Mov.Caja recien cuando el dinero se desembolsa (EN LA OPCION DE CAJA DEL SISTEMA DE CREDITOS)
   //Y NO AQUI.
-  If Trim(dblcFormaDesem.Text)<>'04' then  InsertaMovCaja;
+//Inicio APO_202501_HPC
+  If (Trim(dblcFormaDesem.Text)<>'04') and (Trim(dblcFormaDesem.Text)<>'20') then  InsertaMovCaja;
+//Final APO_202501_HPC
   //*
 
   GrabaTransaccion ;
@@ -747,6 +779,9 @@ begin
   DM1.cdsTransDevol.FieldByName('DEVMES').AsString		  := DM1.cdsTransDevol.FieldByName('TRANSMES').AsString;
 
   DM1.cdsTransDevol.FieldByName('TIPDESEID').AsString		:= dblcFormaDesem.Text;
+//Inicio APO_202501_HPC
+  DM1.cdsTransDevol.FieldByName('ASOCCI').AsString	    := Edtctacci.Text;
+//Final APO_202501_HPC
   DM1.cdsTransDevol.FieldByName('TIPDESEABR').AsString	        := edtFormaDesem.Text;
   DM1.cdsTransDevol.FieldByName('TMONID').AsString		:= 'N';
 //WMC 20030623  DM1.cdsTransDevol.FieldByName('TRANSMTO').Asfloat		:= StrToFloat(dbeMtoAporte.Text);
@@ -792,6 +827,13 @@ begin
   DM1.cdsTransDevol.FieldByName('HREG').AsDateTime		:= Date+SysUtils.Time;
   cdspost(DM1.cdsTransDevol);
   DM1.cdsTransDevol.post;
+//Inicio APO_202501_HPC
+ If dblcFormaDesem.Text = '20' Then
+  Begin
+    Xsql:=' UPDATE db2admin.APO201 SET ASOCCI='+QuotedStr(trim(Edtctacci.Text))+' where ASOID='+QuotedStr(DM1.cdsAsociados.Fieldbyname('ASOID').AsString);
+    DM1.DCOM1.AppServer.EjecutaSQL(XSQL);
+  End;  
+//Final APO_202501_HPC
 end;
 
 procedure TFDevolucionAportes.dbgDevolverDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
@@ -1097,7 +1139,9 @@ end;
 
 procedure TFDevolucionAportes.bbtnSigueClick(Sender: TObject);
 var
-  xSQL:String;
+//Inicio APO_202501_HPC
+  xSQL,sWhere:String;
+//Final APO_202501_HPC
 begin
 
   xSQL := 'BEGIN SP_ACT_APO301ID (''' + dblcdCodigo.text + '''); END;';
@@ -1105,6 +1149,13 @@ begin
 
   xSql:='SELECT APO301.*,''0'' OK FROM APO301 WHERE ASOID='+ QuotedStr(dblcdCodigo.text)
        +' AND TRANSINTID='+quotedstr('APO');
+
+//Inicio APO_202501_HPC
+  sWhere:= 'SITCTAID='+ QuotedStr(dm1.cdsAsociados.Fieldbyname('SITCTA').AsString);
+  EdtSitCta.Text :=DM1.DisplayDescrip('prvTGE','COB103','SITCTADES',sWhere,'SITCTADES');
+
+  //EdtSitCta.Text := DM1.DisplayDescrip('SITCTAID=' + QuotedStr(Trim(DM1.cdsAso.FieldByName('SITCTA').AsString)), 'COB103', 'SITCTADES');
+//Final APO_202501_HPC
 
   DM1.Filtracds(DM1.cdsTransacciones,xSql);
 // WMC 666  DM1.cdsTransacciones.IndexFieldNames:='TRANSANO;TRANSMES;TRANSFOPE';
@@ -1122,9 +1173,33 @@ begin
   if dm1.wModo = 'A' then
     xSql := 'SELECT * FROM APO305 WHERE 1=0'
   else
-    xSQL := 'SELECT * FROM APO305 WHERE DEVID =''' + DM1.cdsTransDevol.FieldByName('DEVID').AsString + ''' ';
-  DM1.Filtracds(dm1.cdsDevolucion,xSQL);
+//Inicio APO_202501_HPC
+    xSQL := 'SELECT A.*,B.TIPDESEID,B.ASOCCI FROM APO305 A,APO311 B WHERE A.DEVID =''' + DM1.cdsTransDevol.FieldByName('DEVID').AsString + ''' AND A.ASOID=B.ASOID(+) AND A.DEVID=B.DEVID(+)  ';
+    DM1.Filtracds(dm1.cdsDevolucion,xSQL);
 
+  if DM1.wModo = 'M' Then
+  begin
+    If DM1.cdsTransDevol.FieldByName('TIPDESEID').AsString = '06' Then
+    Begin
+      pnlCajaDerrama.Visible := False;
+      pnlBanco.Visible       := True;
+      pnltipdescci.Visible   := False;
+    End;
+    If DM1.cdsTransDevol.FieldByName('TIPDESEID').AsString = '04' Then
+    Begin
+      pnlCajaDerrama.Visible := True;
+      pnlBanco.Visible       := False;
+      pnltipdescci.Visible   := False;
+    End;
+    If DM1.cdsTransDevol.FieldByName('TIPDESEID').AsString = '20' Then
+    Begin
+      pnlCajaDerrama.Visible := False;
+      pnlBanco.Visible       := False;
+      pnltipdescci.Visible   := True;
+      Edtctacci.Text         := DM1.cdsDevolucion.FieldByName('ASOCCI').AsString;
+    End;
+  end;
+//Final APO_202501_HPC
   TNumericField(DM1.cdsDevolucion.FieldByName('APOMONTO')).DisplayFormat:='###,###,##0.00';
   TNumericField(DM1.cdsDevolucion.FieldByName('APOMONTO')).EditFormat:='########0.00';
   dbgDevolver.ColumnByName('APOMONTO').FooterValue := FloatToStrF(DM1.OperClientDataSet(DM1.cdsDevolucion,'SUM(APOMONTO)',''),ffNumber, 10, 2);
@@ -1443,6 +1518,9 @@ begin
          +  '        APO201.ASONCTA,                            '
          +  '        APO201.SITCTA,                             '
          +  '        COB103.SITCTADES,                          '
+//Inicio APO_202501_HPC
+         +  '        APO201.ASOCCI,                             '
+//Final APO_202501_HPC
          +  '                                                   '
          +  '        APO201.USEID,                              '
          +   '       A.USENOM,                                  '
@@ -1779,6 +1857,9 @@ end;
 
 procedure TFDevolucionAportes.ValidaGrabacion;
 var
+//Inicio APO_202501_HPC
+  xAsoCta : String;
+//Final APO_202501_HPC
   bAbono : boolean ;
 begin
   bAbono := False ;
@@ -1806,13 +1887,37 @@ begin
      dblcBanco.SetFocus ;
      Raise Exception.Create(' Ingrese Caja/Bancos para el Desembolso ');
   end ;
-
-  if dblcCCBco.Enabled  and (trim(dblcCCBco.Text)= '') then
+//Inicio APO_202501_HPC
+  if dblcCCBco.Enabled  and (trim(dblcCCBco.Text)= '') and (dblcFormaDesem.Text<>'20') then
+//Final APO_202501_HPC
   begin
      dblcCCBco.SetFocus ;
      Raise Exception.Create(' Ingrese Cuenta Corriente ');
   end ;
 
+//Inicio APO_202501_HPC
+  if (dblcFormaDesem.Text='20') and  (Length(trim(Edtctacci.Text))<>20) then
+  begin
+    Edtctacci.Text :=  dbeCuentaAsociado.Text;
+    Edtctacci.SetFocus;
+    Edtctacci.SelectAll;
+    Raise Exception.Create(' Debe ingresar el CCI de la cuenta ');
+  end;
+
+  If (dblcFormaDesem.Text='20') Then
+  Begin
+    xAsoCta := copy(trim(Edtctacci.Text),9,10);
+    If xAsoCta <> Trim(dbeCuentaAsociado.Text) then
+    Begin
+      edtctacci.Text:=dbeCuentaAsociado.Text;
+      DM1.cdsQry.Close;
+      edtctacci.SetFocus;
+      Edtctacci.SelectAll;
+      Raise Exception.Create('La cuenta CCI no coincide con la cta. de ahorros del asociado registrado en el MMA o el formato es diferente' );
+    End;
+
+   End;
+//Final APO_202501_HPC
   if dblcFormaDesem.LookupTable.Locate('TIPDESEID',VarArrayOf([dblcFormaDesem.text]),[]) then
   begin
      if dblcFormaDesem.LookupTable.FieldByName('ACTBCO').AsString = 'S' then
@@ -2093,13 +2198,14 @@ end;
 
 procedure TFDevolucionAportes.dblcBancoExit(Sender: TObject);
 var
-    sWhere : string;
+//Inicio APO_202501_HPC
+    sWhere,xAsoCta : string;
+//Final APO_202501_HPC
 begin
-//Inicio APO_202101_HPC  
-//Opción desembolso en efectivo en oficinas
-   pnlCajaDerrama.Visible := False;
-
-
+//Inicio APO_202501_HPC
+  pnlCajaDerrama.Visible := False;
+  dblcCCBco.Enabled  := False;
+//Final APO_202501_HPC
   If  dblcFormaDesem.Text='04' Then
   begin
     if dblcBanco.LookupTable.Locate('BANCOID', VarArrayOf([dblcBanco.Text]),[]) then
@@ -2110,12 +2216,29 @@ begin
     DBLkOfiDes.SetFocus;
     DBLkOfiDes.DropDown;
   end
+//Inicio APO_202501_HPC
+  Else if dblcFormaDesem.Text='20' Then
+  Begin
+    If dblcBanco.LookupTable.Locate('BANCOID', VarArrayOf([dblcBanco.Text]),[]) then
+       dbeBanco.Text := dblcBanco.LookupTable.FieldByName('BANCOABR').AsString;
+//Final APO_202501_HPC
 
+//Inicio APO_202501_HPC
+    If  Length(Trim(edtctacci.Text))<20 Then
+    Begin
+      Edtctacci.Text := dbeCuentaAsociado.Text;
+      Edtctacci.SelectAll;
+    End;
+    xAsoCta := copy(TRIM(Edtctacci.Text),9,10);
+    If xAsoCta <> Trim(dbeCuentaAsociado.Text) then
+    Begin
+      Edtctacci.Text := dbeCuentaAsociado.Text;
+      Edtctacci.SelectAll;
+    End;
+  End
+//Final APO_202501_HPC
   Else
-
-  begin
-//Fin APO_202101_HPC  
-
+  begin //ini else
   if tmpCadenaEnter <> dblcBanco.Text then
   begin
 
@@ -2128,7 +2251,7 @@ begin
     end
     else
     begin
-  ///******
+
       if dblcBanco.LookupTable.Locate('BANCOID', VarArrayOf([dblcBanco.Text]),[]) then
       begin
         dbeBanco.Text := dblcBanco.LookupTable.FieldByName('BANCOABR').AsString;
@@ -2142,7 +2265,7 @@ begin
            DM1.cdsCbcos.Filter:= 'CIAID='+Quotedstr(wCiaDef)+' AND BANCOID='+''''+dblcBanco.Text+'''';
            DM1.cdsCbcos.Filtered:=True;
            dblcCCBco.setfocus;
-        end;
+        end; //fin  dblcBanco.LookupTable.FieldByName('BCOTIPCTA').Value='C'
       end
       else
       begin
@@ -2153,16 +2276,10 @@ begin
         dbeBanco.Clear ;
         dblcCCBco . DataSource . DataSet . FieldByName(dblcCCBco.datafield).Clear ;
         dblcCCBco . Enabled  := False ;
-
-      end ;
-  ///******
-    end ;
-//
-  end ;
-//Inicio APO_202101_HPC  
-//Opción desembolso en efectivo en oficinas
-  end;
-//Fin APO_202101_HPC  
+      end ; //fin  dblcBanco.LookupTable.Locate('BANCOID', VarArrayOf([dblcBanco.Text]),[])
+    end; //fin dblcBanco.Text = ''
+   end; //fin else  tmpCadenaEnter <> dblcBanco.Text
+  end;// fin dblcFormaDesem.Text='04'
 
 end;
 
@@ -2445,5 +2562,40 @@ begin
 //Fin APO_202101_HPC  
 
 end;
+//Inicio APO_202501_HPC
+procedure TFDevolucionAportes.EdtctacciExit(Sender: TObject);
+VAR xSql, xAsoCta: STRING;
+begin
+
+  xSql := 'SELECT REPLACE('''+TRIM(edtctacci.Text)+''',''-'','''') CCI FROM DUAL ';
+  DM1.cdsQry.Close;
+  DM1.cdsQry.DataRequest(xsql);
+  DM1.cdsQry.Open;
+  edtctacci.Text:= DM1.cdsQry.Fieldbyname('CCI').AsString;
+  If  Length(Trim(edtctacci.Text))<20 Then
+  Begin
+     ShowMessage('La cuenta CCI no cumple el número de caracteres, verifique');
+     edtctacci.SetFocus;
+     Edtctacci.SelectAll;
+     exit;
+  End;
+  xAsoCta := copy(TRIM(DM1.cdsQry.Fieldbyname('CCI').AsString),9,10);
+  If xAsoCta <> Trim(dbeCuentaAsociado.Text) then
+  Begin
+    ShowMessage('La cuenta CCI no coincide con la cta. de ahorros del asociado registrado en el MMA o el formato es diferente' );
+    edtctacci.Text:=dbeCuentaAsociado.Text;
+    DM1.cdsQry.Close;
+    edtctacci.SetFocus;
+    Edtctacci.SelectAll;
+  End;
+  DM1.cdsQry.Close;
+ // BtnSalir.SetFocus;
+end;
+
+procedure TFDevolucionAportes.dblcFormaDesemChange(Sender: TObject);
+begin
+Edtctacci.Text := '';
+end;
+//Fin APO_202501_HPC
 
 end.
